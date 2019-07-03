@@ -10,7 +10,6 @@ import org.graylog2.gelfclient.transport.GelfTransport
 import org.graylog2.gelfclient.transport.GelfUdpTransport
 import java.net.InetAddress
 import java.net.UnknownHostException
-import java.util.concurrent.atomic.AtomicLong
 
 class GraylogNettyAppender : UnsynchronizedAppenderBase<ILoggingEvent>() {
 
@@ -19,9 +18,9 @@ class GraylogNettyAppender : UnsynchronizedAppenderBase<ILoggingEvent>() {
     var transport = "TCP" // TCP or UDP
     var queueSize = 512
     var queueFullStrategy = "DROP" // DROP or UDP
-    var queueProcessRate = 1; // in seconds (1 means once per second, 10 means once per 10 seconds)
+    var queueProcessRate = 1000; // in milliseconds (how frequent queue should be processed)
     var tlsEnabled = false
-    var tlsCertVerificationEnabled = true
+    var tlsCertVerificationEnabled = false
     var reconnectDelay = 500
     var connectTimeout = 1000
     var tcpNoDelay = false
@@ -57,10 +56,10 @@ class GraylogNettyAppender : UnsynchronizedAppenderBase<ILoggingEvent>() {
         if (!isInputParamsValid()) return
 
         try {
-            val config = createClientConfiguration()
-            gelfClient = GelfTransports.create(config)
+            val mainConfig = createClientConfiguration()
+            gelfClient = GelfTransports.create(mainConfig)
             if (queueFullStrategy == "UDP") {
-                udpGelfClient = GelfTransports.create(GelfTransports.UDP, config) as GelfUdpTransport
+                udpGelfClient = GelfTransports.create(createClientConfiguration(transport = "UDP", graylogPort = 12202)) as GelfUdpTransport
             }
             messageFactory = DefaultGelfMessageFactory()
             super.start()
@@ -110,11 +109,11 @@ class GraylogNettyAppender : UnsynchronizedAppenderBase<ILoggingEvent>() {
         }
     }
 
-    private fun createClientConfiguration(): GelfConfiguration {
+    private fun createClientConfiguration(transport: String = this.transport, graylogPort: Int = this.graylogPort): GelfConfiguration {
 
         val config = GelfConfiguration(graylogHost, graylogPort)
         config.queueSize(queueSize)
-        config.queueProcessRateInSec(queueProcessRate)
+        config.queueProcessRateIn(queueProcessRate)
         config.connectTimeout(connectTimeout)
         config.reconnectDelay(reconnectDelay)
         config.tcpNoDelay(tcpNoDelay)
