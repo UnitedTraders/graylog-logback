@@ -16,18 +16,18 @@ class GraylogNettyAppender : UnsynchronizedAppenderBase<ILoggingEvent>() {
     var graylogHost = "localhost"
     var graylogPort = 12201 // default TCP-GELF port
     var transport = "TCP" // TCP or UDP
-    var queueSize = 512
+    var queueSize = 2048
     var queueFullStrategy = "DROP" // DROP or UDP
     var queueProcessRate = 1000; // in milliseconds (how frequent queue should be processed)
     var tlsEnabled = false
     var tlsCertVerificationEnabled = false
     var reconnectDelay = 500
-    var connectTimeout = 1000
+    var connectTimeout = 30_000
     var tcpNoDelay = false
     var tcpKeepAlive = false
     var sendBufferSize = -1
-    var maxInflightSends = 512
-    var eventLoopThreads = 0
+    var maxInflightSends = 1024
+    var eventLoopThreads = 1
 
     var additionalFields = mutableMapOf<String, Any>()
 
@@ -47,13 +47,20 @@ class GraylogNettyAppender : UnsynchronizedAppenderBase<ILoggingEvent>() {
            }
         }
 
-    private lateinit var gelfClient: GelfTransport
-    private lateinit var udpGelfClient: GelfUdpTransport
+    private var gelfClient: GelfTransport? = null
+    private var udpGelfClient: GelfUdpTransport? = null
     private lateinit var messageFactory: GelfMessageFactory
 
     override fun start() {
 
         if (!isInputParamsValid()) return
+
+        Runtime.getRuntime().addShutdownHook(object : Thread() {
+            override fun run() {
+                gelfClient?.stop()
+                udpGelfClient?.stop()
+            }
+        })
 
         try {
             val mainConfig = createClientConfiguration()
@@ -70,7 +77,8 @@ class GraylogNettyAppender : UnsynchronizedAppenderBase<ILoggingEvent>() {
 
     override fun stop() {
         try {
-            gelfClient.stop()
+            // stop calls might come from frequent spring context refreshes.
+            // we don't stop gelf clients then here
             super.stop()
         } catch (ex: Throwable) {
             addError("Couldn't stop appender", ex)
@@ -89,21 +97,21 @@ class GraylogNettyAppender : UnsynchronizedAppenderBase<ILoggingEvent>() {
 
     private fun sendMessage(msg: GelfMessage?, eventLogLevel: Level) {
 
-        if (gelfClient.trySend(msg)) {
+        if (gelfClient!!.trySend(msg)) {
             return
         }
 
         // if queue is full then apply some strategy
         if (eventLogLevel.levelInt >= Level.WARN.levelInt) {
-            gelfClient.send(msg)
+            gelfClient!!.send(msg)
         } else {
             if (queueFullStrategy == "DROP") {
                 // drop all logs which level less than WARN
                 return;
             } else {
                 // or send them via UDP
-                if (!udpGelfClient.trySend(msg)) {
-                    udpGelfClient.send(msg)
+                if (!udpGelfClient!!.trySend(msg)) {
+                    udpGelfClient!!.send(msg)
                 }
             }
         }
