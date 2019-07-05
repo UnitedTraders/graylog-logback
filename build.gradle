@@ -16,7 +16,7 @@ apply plugin: 'maven-publish'
 apply plugin: 'maven'
 
 group 'com.unitedtraders.logging.logback'
-version '1.0.0-SNAPSHOT'
+version '1.0.0'
 
 ext {
     publishedGroupId = 'com.unitedtraders.logging.logback'
