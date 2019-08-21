@@ -102,7 +102,7 @@ class DefaultGelfMessageFactory : GelfMessageFactory {
 
     companion object {
 
-        private val DEFAULT_SHORT_MESSAGE_PATTERN = "%m%nopex"
-        private val DEFAULT_FULL_MESSAGE_PATTERN = "%m%n%xEx"
+        private val DEFAULT_SHORT_MESSAGE_PATTERN = "%mdc%m%nopex"
+        private val DEFAULT_FULL_MESSAGE_PATTERN = "%mdc%m%n%xEx"
     }
 }
