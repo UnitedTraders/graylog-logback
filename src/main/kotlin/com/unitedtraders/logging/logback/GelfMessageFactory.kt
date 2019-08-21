@@ -71,16 +71,26 @@ class DefaultGelfMessageFactory : GelfMessageFactory {
         }
         message.addAdditionalField("_facility", appender.facility)
 
-        when {
-            appender.locationIncluded -> {
-                val locationInformation = event.callerData[0]
-                message.addAdditionalField("_file", locationInformation.fileName)
-                message.addAdditionalField("_line", locationInformation.lineNumber)
-            }
-            appender.loggerIncluded -> { message.addAdditionalField("_logger", event.loggerName) }
-            appender.threadIncluded -> { message.addAdditionalField("_thread", event.threadName) }
-            appender.markerIncluded -> { message.addAdditionalField("_marker", event.marker ?: "") }
-            appender.mdcIncluded -> { event.mdcPropertyMap?.entries?.map { message.addAdditionalField(it.key, it.value) } }
+        if (appender.locationIncluded) {
+            val locationInformation = event.callerData[0]
+            message.addAdditionalField("_file", locationInformation.fileName)
+            message.addAdditionalField("_line", locationInformation.lineNumber)
+        }
+
+        if (appender.loggerIncluded) {
+            message.addAdditionalField("_logger", event.loggerName)
+        }
+
+        if (appender.threadIncluded) {
+            message.addAdditionalField("_thread", event.threadName)
+        }
+
+        if (appender.markerIncluded) {
+            message.addAdditionalField("_marker", event.marker ?: "")
+        }
+
+        if (appender.mdcIncluded) {
+            event.mdcPropertyMap?.entries?.map { message.addAdditionalField(it.key, it.value) }
         }
 
         return message
@@ -102,7 +112,7 @@ class DefaultGelfMessageFactory : GelfMessageFactory {
 
     companion object {
 
-        private val DEFAULT_SHORT_MESSAGE_PATTERN = "%mdc%m%nopex"
-        private val DEFAULT_FULL_MESSAGE_PATTERN = "%mdc%m%n%xEx"
+        private val DEFAULT_SHORT_MESSAGE_PATTERN = "%m%nopex"
+        private val DEFAULT_FULL_MESSAGE_PATTERN = "%m%n%xEx"
     }
 }
