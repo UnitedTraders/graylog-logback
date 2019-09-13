@@ -90,7 +90,9 @@ class DefaultGelfMessageFactory : GelfMessageFactory {
         }
 
         if (appender.mdcIncluded) {
-            event.mdcPropertyMap?.entries?.map { message.addAdditionalField(it.key, it.value) }
+            event.mdcPropertyMap?.entries?.forEach {
+                message.addAdditionalField(it.key, it.value)
+            }
         }
 
         return message
